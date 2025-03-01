@@ -43,7 +43,7 @@ use kmr_wire::{
     sharedsecret::SharedSecretParameters,
     *,
 };
-use log::{error, info, trace, warn};
+use log::{debug, error, info, trace, warn};
 
 mod cert;
 mod clock;
@@ -613,14 +613,25 @@ impl KeyMintTa {
 
     /// Configure the version of the HAL that this TA should act as.
     pub fn set_hal_version(&mut self, aidl_version: u32) -> Result<(), Error> {
-        self.aidl_version = match aidl_version {
+        let aidl_version = match aidl_version {
             100 => KeyMintHalVersion::V1,
             200 => KeyMintHalVersion::V2,
             300 => KeyMintHalVersion::V3,
             400 => KeyMintHalVersion::V4,
             _ => return Err(km_err!(InvalidArgument, "unsupported HAL version {}", aidl_version)),
         };
-        info!("Set aidl_version to {:?}", self.aidl_version);
+        if aidl_version == self.aidl_version {
+            debug!("Set aidl_version to existing version {aidl_version:?}");
+        } else if cfg!(feature = "downgrade") {
+            info!("Change aidl_version from {:?} to {:?}", self.aidl_version, aidl_version);
+            self.aidl_version = aidl_version;
+        } else {
+            // Only allow HAL-triggered downgrade if the "downgrade" feature is enabled.
+            warn!(
+                "Ignoring request to change aidl_version from {:?} to {:?}",
+                self.aidl_version, aidl_version
+            );
+        }
         Ok(())
     }
 

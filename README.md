@@ -201,6 +201,10 @@ features or provisioned information, in the form of implementations of the vario
 
 ## Supporting Older Versions of the KeyMint HAL
 
-The reference implementation has the ability to behave like an earlier version of the KeyMint
-HAL. To enable emulation of (say) KeyMint v1, link the HAL service against the `libkmr_hal_v1` and
-`libkmr_wire_hal_v1` targets rather than `libkmr_hal` / `libkmr_wire`.
+The reference implementation has the ability to behave like an earlier version of the KeyMint HAL
+for testing. To enable emulation of (say) KeyMint v1, link the HAL service against the
+`libkmr_hal_v1` and `libkmr_wire_hal_v1` targets rather than `libkmr_hal` / `libkmr_wire`, and
+ensure that the `downgrade` feature for the TA code is enabled.
+
+The `downgrade` feature for the TA code (`kmr-ta` crate) should not be enabled for a production
+device.

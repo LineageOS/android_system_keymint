@@ -8,6 +8,12 @@ authors = ["David Drysdale <drysdale@google.com>"]
 edition = "2021"
 license = "Apache-2.0"
 
+[features]
+default = []
+# The `downgrade` feature allows the HAL service to tell the TA what version of the KeyMint
+# HAL to implement.
+downgrade = []
+
 [dependencies]
 ciborium = { version = "^0.2.0", default-features = false }
 ciborium-io = "^0.2.0"
