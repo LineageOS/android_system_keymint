@@ -373,7 +373,10 @@ impl KeyMintTa {
     /// hashed (if necessary).
     fn boot_info_hashed_key(&self) -> Result<keymint::BootInfo, Error> {
         let mut boot_info = self.boot_info()?.clone();
-        if boot_info.verified_boot_key.len() > 32 {
+        if boot_info.verified_boot_key.is_empty() {
+            // Expand an empty VB key to all-zeroes.
+            boot_info.verified_boot_key = vec_try![0u8; 32]?;
+        } else if boot_info.verified_boot_key.len() > 32 {
             // It looks like we have the actual key, not a hash thereof.  Change that.
             boot_info.verified_boot_key =
                 try_to_vec(&self.imp.sha256.hash(&boot_info.verified_boot_key)?)?;
