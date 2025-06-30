@@ -191,7 +191,7 @@ fn serialize_trusty_response_message<T: TrustySerialize>(
     let cmd = result.cmd();
     // None of the supported response messages are large enough to require fragmentation, so always
     // mark this as the final response.
-    let raw_cmd = cmd << TRUSTY_CMD_SHIFT | TRUSTY_RESPONSE_BITMASK | TRUSTY_STOP_BITMASK;
+    let raw_cmd = (cmd << TRUSTY_CMD_SHIFT) | TRUSTY_RESPONSE_BITMASK | TRUSTY_STOP_BITMASK;
     let mut buf = Vec::new();
     buf.try_reserve(LEGACY_NON_SEC_RSP_HEADER_SIZE).map_err(|_e| Error::AllocationFailed)?;
     buf.extend_from_slice(&raw_cmd.to_ne_bytes());
@@ -216,7 +216,7 @@ pub fn serialize_trusty_rsp(rsp: TrustyPerformOpRsp) -> Result<Vec<u8>, Error> {
 
 /// Serialize raw data as a Trusty response message without length prefix.
 fn serialize_trusty_raw_rsp(cmd: u32, raw_data: &[u8]) -> Result<Vec<u8>, Error> {
-    let raw_cmd = cmd << TRUSTY_CMD_SHIFT | TRUSTY_RESPONSE_BITMASK | TRUSTY_STOP_BITMASK;
+    let raw_cmd = (cmd << TRUSTY_CMD_SHIFT) | TRUSTY_RESPONSE_BITMASK | TRUSTY_STOP_BITMASK;
     let mut buf = Vec::new();
     buf.try_reserve(CMD_SIZE + raw_data.len()).map_err(|_e| Error::AllocationFailed)?;
     buf.extend_from_slice(&raw_cmd.to_ne_bytes());
