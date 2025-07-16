@@ -638,7 +638,8 @@ impl KeyMintTa {
         Ok(())
     }
 
-    /// Configure attestation IDs externally.
+    /// Configure attestation IDs externally.  Access to this method must be restricted so that
+    /// attestation IDs can only be set during provisioning, and never at runtime.
     pub fn set_attestation_ids(&self, ids: AttestationIdInfo) {
         if self.dev.attest_ids.is_some() {
             error!("Attempt to set attestation IDs externally");
@@ -1055,11 +1056,12 @@ impl KeyMintTa {
         Ok(())
     }
 
-    fn destroy_attestation_ids(&mut self) -> Result<(), Error> {
+    /// Destroy attestation IDs for the device, and clear any cached copies.
+    pub fn destroy_attestation_ids(&mut self) -> Result<(), Error> {
+        // Drop any cached copies too.
+        *self.attestation_id_info.borrow_mut() = None;
         match self.dev.attest_ids.as_mut() {
             Some(attest_ids) => {
-                // Drop any cached copies too.
-                *self.attestation_id_info.borrow_mut() = None;
                 error!("destroying all device attestation IDs!");
                 attest_ids.destroy_all()
             }
