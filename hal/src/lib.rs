@@ -33,7 +33,7 @@ use std::{
     ffi::CString,
     io::{Read, Write},
     ops::DerefMut,
-    sync::MutexGuard,
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 pub use binder;
@@ -46,6 +46,11 @@ pub mod secureclock;
 pub mod sharedsecret;
 #[cfg(test)]
 mod tests;
+
+static KM_SERVICE_NAME: &str = "android.hardware.security.keymint.IKeyMintDevice";
+static RPC_SERVICE_NAME: &str = "android.hardware.security.keymint.IRemotelyProvisionedComponent";
+static SECURE_CLOCK_SERVICE_NAME: &str = "android.hardware.security.secureclock.ISecureClock";
+static SHARED_SECRET_SERVICE_NAME: &str = "android.hardware.security.sharedsecret.ISharedSecret";
 
 /// Emit a failure for a failed CBOR conversion.
 #[inline]
@@ -309,10 +314,53 @@ pub fn send_attest_ids<T: SerializedChannel>(
     Ok(())
 }
 
-/// Let the TA know that early boot has ended
+/// Let the TA know that early boot has ended.
 pub fn early_boot_ended<T: SerializedChannel>(channel: &mut T) -> binder::Result<()> {
     info!("boot->TA: early boot ended");
     let req = kmr_wire::EarlyBootEndedRequest {};
     let _rsp: kmr_wire::EarlyBootEndedResponse = channel_execute(channel, req)?;
+    Ok(())
+}
+
+/// Local error type for failures in the HAL service.
+#[derive(Debug, Clone)]
+pub struct HalServiceError(pub String);
+
+impl From<String> for HalServiceError {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+/// Register all KeyMint-related HAL services with Binder.
+pub fn register_binder_services<T: SerializedChannel + 'static>(
+    channel: &Arc<Mutex<T>>,
+    instance: &str,
+) -> Result<(), HalServiceError> {
+    // Register the KeyMint service
+    let km_service = keymint::Device::new_as_binder(channel.clone());
+    let km_service_name = format!("{KM_SERVICE_NAME}/{instance}");
+    binder::add_service(&km_service_name, km_service.as_binder())
+        .map_err(|e| format!("Failed to register service {km_service_name}: {e:?}"))?;
+
+    // Register the Remotely Provisioned Component service
+    let rpc_service = rpc::Device::new_as_binder(channel.clone());
+    let rpc_service_name = format!("{RPC_SERVICE_NAME}/{instance}");
+    binder::add_service(&rpc_service_name, rpc_service.as_binder())
+        .map_err(|e| format!("Failed to register service {rpc_service_name}: {e:?}"))?;
+
+    // Register the Secure Clock service
+    let sclock_service = secureclock::Device::new_as_binder(channel.clone());
+    let sclock_service_name = format!("{SECURE_CLOCK_SERVICE_NAME}/{instance}");
+    binder::add_service(&sclock_service_name, sclock_service.as_binder())
+        .map_err(|e| format!("Failed to register service {sclock_service_name}: {e:?}"))?;
+
+    // Register the Shared Secret service
+    let ssecret_service = sharedsecret::Device::new_as_binder(channel.clone());
+    let ssecret_service_name = format!("{SHARED_SECRET_SERVICE_NAME}/{instance}");
+    binder::add_service(&ssecret_service_name, ssecret_service.as_binder())
+        .map_err(|e| format!("Failed to register service {ssecret_service_name}: {e:?}"))?;
+
+    info!("Successfully registered KeyMint HAL services");
     Ok(())
 }
