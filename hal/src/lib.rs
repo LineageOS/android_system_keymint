@@ -35,6 +35,7 @@ use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard},
 };
+use thiserror::Error;
 
 pub use binder;
 
@@ -323,7 +324,8 @@ pub fn early_boot_ended<T: SerializedChannel>(channel: &mut T) -> binder::Result
 }
 
 /// Local error type for failures in the HAL service.
-#[derive(Debug, Clone)]
+#[derive(Error, Debug, Clone)]
+#[error("HalServiceError: {0}")]
 pub struct HalServiceError(pub String);
 
 impl From<String> for HalServiceError {
