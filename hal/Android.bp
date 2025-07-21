@@ -31,6 +31,7 @@ rust_defaults {
         "liblog_rust",
         "libregex",
         "librustutils",
+        "libthiserror",
     ],
     proc_macros: [
         "libkmr_derive",
