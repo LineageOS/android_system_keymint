@@ -22,6 +22,7 @@ use alloc::{
     vec::Vec,
 };
 use core::convert::From;
+use core::num::TryFromIntError;
 use der::ErrorKind;
 use kmr_wire::{cbor, keymint::ErrorCode, rpc, CborError};
 
@@ -186,6 +187,12 @@ impl From<alloc::collections::TryReserveError> for Error {
             kmr_wire::keymint::ErrorCode::MemoryAllocationFailed,
             "allocation of Vec failed".to_string(),
         )
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(e: TryFromIntError) -> Self {
+        km_err!(InvalidArgument, "failed to convert integer: {e}")
     }
 }
 
