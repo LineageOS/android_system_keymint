@@ -23,7 +23,10 @@
 
 #![allow(non_snake_case)]
 
-use core::{convert::TryInto, fmt::Debug};
+use core::{
+    convert::TryInto,
+    fmt::{self, Debug},
+};
 use kmr_wire::{
     cbor, cbor_type_error, keymint::ErrorCode, keymint::NEXT_MESSAGE_SIGNAL_TRUE, AsCborValue,
     CborError, Code, KeyMintOperation,
@@ -48,10 +51,52 @@ pub mod sharedsecret;
 #[cfg(test)]
 mod tests;
 
-static KM_SERVICE_NAME: &str = "android.hardware.security.keymint.IKeyMintDevice";
-static RPC_SERVICE_NAME: &str = "android.hardware.security.keymint.IRemotelyProvisionedComponent";
-static SECURE_CLOCK_SERVICE_NAME: &str = "android.hardware.security.secureclock.ISecureClock";
-static SHARED_SECRET_SERVICE_NAME: &str = "android.hardware.security.sharedsecret.ISharedSecret";
+/// Defines the KeyMint HALs that can be registered.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Hal {
+    /// IKeyMintDevice HAL.
+    KeyMintDevice,
+    /// IRemotelyProvisionedComponent HAL.
+    RemotelyProvisionedComponent,
+    /// ISecureClock HAL.
+    SecureClock,
+    /// ISharedSecret HAL.
+    SharedSecret,
+}
+
+impl fmt::Display for Hal {
+    /// Formats the HAL enum as its corresponding fully qualified interface name.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::KeyMintDevice => "android.hardware.security.keymint.IKeyMintDevice",
+            Self::RemotelyProvisionedComponent => {
+                "android.hardware.security.keymint.IRemotelyProvisionedComponent"
+            }
+            Self::SecureClock => "android.hardware.security.secureclock.ISecureClock",
+            Self::SharedSecret => "android.hardware.security.sharedsecret.ISharedSecret",
+        })
+    }
+}
+
+impl Hal {
+    fn new_binder<T: SerializedChannel + 'static>(
+        &self,
+        channel: &Arc<Mutex<T>>,
+    ) -> binder::SpIBinder {
+        match self {
+            Hal::KeyMintDevice => keymint::Device::new_as_binder(channel.clone()).as_binder(),
+            Hal::RemotelyProvisionedComponent => {
+                rpc::Device::new_as_binder(channel.clone()).as_binder()
+            }
+            Hal::SecureClock => secureclock::Device::new_as_binder(channel.clone()).as_binder(),
+            Hal::SharedSecret => sharedsecret::Device::new_as_binder(channel.clone()).as_binder(),
+        }
+    }
+}
+
+/// A list of all HAL services that are registered by default.
+pub const ALL_HALS: &[Hal] =
+    &[Hal::KeyMintDevice, Hal::RemotelyProvisionedComponent, Hal::SecureClock, Hal::SharedSecret];
 
 /// Emit a failure for a failed CBOR conversion.
 #[inline]
@@ -334,35 +379,17 @@ impl From<String> for HalServiceError {
     }
 }
 
-/// Register all KeyMint-related HAL services with Binder.
+/// Register the given set of KeyMint-related HAL services with Binder.
 pub fn register_binder_services<T: SerializedChannel + 'static>(
     channel: &Arc<Mutex<T>>,
+    hals_to_register: &[Hal],
     instance: &str,
 ) -> Result<(), HalServiceError> {
-    // Register the KeyMint service
-    let km_service = keymint::Device::new_as_binder(channel.clone());
-    let km_service_name = format!("{KM_SERVICE_NAME}/{instance}");
-    binder::add_service(&km_service_name, km_service.as_binder())
-        .map_err(|e| format!("Failed to register service {km_service_name}: {e:?}"))?;
-
-    // Register the Remotely Provisioned Component service
-    let rpc_service = rpc::Device::new_as_binder(channel.clone());
-    let rpc_service_name = format!("{RPC_SERVICE_NAME}/{instance}");
-    binder::add_service(&rpc_service_name, rpc_service.as_binder())
-        .map_err(|e| format!("Failed to register service {rpc_service_name}: {e:?}"))?;
-
-    // Register the Secure Clock service
-    let sclock_service = secureclock::Device::new_as_binder(channel.clone());
-    let sclock_service_name = format!("{SECURE_CLOCK_SERVICE_NAME}/{instance}");
-    binder::add_service(&sclock_service_name, sclock_service.as_binder())
-        .map_err(|e| format!("Failed to register service {sclock_service_name}: {e:?}"))?;
-
-    // Register the Shared Secret service
-    let ssecret_service = sharedsecret::Device::new_as_binder(channel.clone());
-    let ssecret_service_name = format!("{SHARED_SECRET_SERVICE_NAME}/{instance}");
-    binder::add_service(&ssecret_service_name, ssecret_service.as_binder())
-        .map_err(|e| format!("Failed to register service {ssecret_service_name}: {e:?}"))?;
-
-    info!("Successfully registered KeyMint HAL services");
+    for hal in hals_to_register {
+        let service_name = format!("{hal}/{instance}");
+        binder::add_service(&service_name, hal.new_binder(channel))
+            .map_err(|e| format!("Failed to register service {service_name}: {e:?}"))?;
+        info!("Successfully registered {service_name}");
+    }
     Ok(())
 }
