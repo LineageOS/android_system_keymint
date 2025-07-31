@@ -207,12 +207,6 @@ fn validity_time_from_datetime(when: DateTime) -> Result<Time, Error> {
     }
 }
 
-pub(crate) fn asn1_der_encode<T: Encode>(obj: &T) -> Result<Vec<u8>, der::Error> {
-    let mut encoded_data = Vec::<u8>::new();
-    obj.encode_to_vec(&mut encoded_data)?;
-    Ok(encoded_data)
-}
-
 /// Build key usage extension bits.
 pub(crate) fn key_usage_extension_bits(params: &[KeyParam]) -> KeyUsage {
     // Build `KeyUsage` bitmask based on allowed purposes for the key.
