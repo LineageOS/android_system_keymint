@@ -18,7 +18,7 @@ use crate::{cert, device, AttestationChainInfo};
 use alloc::collections::btree_map::Entry;
 use alloc::vec::Vec;
 use core::{borrow::Borrow, cmp::Ordering, convert::TryFrom};
-use der::{referenced::RefToOwned, Decode, Sequence};
+use der::{referenced::RefToOwned, Decode, Encode, Sequence};
 use kmr_common::{
     crypto::{self, aes, rsa, KeyMaterial, OpaqueOr},
     der_err, get_bool_tag_value, get_opt_tag_value, get_tag_value, keyblob, km_err, tag,
@@ -151,7 +151,8 @@ impl crate::KeyMintTa {
     ) -> Result<keymint::Certificate, Error> {
         // Build and encode key usage extension value
         let key_usage_ext_bits = cert::key_usage_extension_bits(params);
-        let key_usage_ext_val = cert::asn1_der_encode(&key_usage_ext_bits)
+        let key_usage_ext_val = key_usage_ext_bits
+            .to_der()
             .map_err(|e| der_err!(e, "failed to encode KeyUsage {:?}", key_usage_ext_bits))?;
 
         // Build and encode basic constraints extension value, based on the key usage extension
@@ -159,7 +160,7 @@ impl crate::KeyMintTa {
         let basic_constraints_ext_val =
             if (key_usage_ext_bits.0 & KeyUsages::KeyCertSign).bits().count_ones() != 0 {
                 let basic_constraints = cert::basic_constraints_ext_value(true);
-                Some(cert::asn1_der_encode(&basic_constraints).map_err(|e| {
+                Some(basic_constraints.to_der().map_err(|e| {
                     der_err!(e, "failed to encode basic constraints {:?}", basic_constraints)
                 })?)
             } else {
@@ -185,7 +186,8 @@ impl crate::KeyMintTa {
                     &self.additional_attestation_info,
                 )?;
                 Some(
-                    cert::asn1_der_encode(&attest_ext)
+                    attest_ext
+                        .to_der()
                         .map_err(|e| der_err!(e, "failed to encode attestation extension"))?,
                 )
             } else {
@@ -201,8 +203,7 @@ impl crate::KeyMintTa {
             tag::characteristics_at(chars, self.hw_info.security_level)?,
             params,
         )?;
-        let tbs_data = cert::asn1_der_encode(&tbs_cert)
-            .map_err(|e| der_err!(e, "failed to encode tbsCert"))?;
+        let tbs_data = tbs_cert.to_der().map_err(|e| der_err!(e, "failed to encode tbsCert"))?;
         // If key does not have ATTEST_KEY or SIGN purpose, the certificate has empty signature
         let sig_data = match info.as_ref() {
             Some(info) => self.sign_cert_data(info.signing_key.clone(), tbs_data.as_slice())?,
@@ -210,8 +211,7 @@ impl crate::KeyMintTa {
         };
 
         let cert = cert::certificate(tbs_cert, &sig_data)?;
-        let cert_data = cert::asn1_der_encode(&cert)
-            .map_err(|e| der_err!(e, "failed to encode certificate"))?;
+        let cert_data = cert.to_der().map_err(|e| der_err!(e, "failed to encode certificate"))?;
         Ok(keymint::Certificate { encoded_certificate: cert_data })
     }
 
@@ -629,7 +629,9 @@ impl crate::KeyMintTa {
             crypto::SymmetricOperation::Decrypt,
         )?;
         op.update_aad(
-            &cert::asn1_der_encode(&secure_key_wrapper.key_description)
+            &secure_key_wrapper
+                .key_description
+                .to_der()
                 .map_err(|e| der_err!(e, "failed to re-encode SecureKeyWrapper"))?,
         )?;
 
