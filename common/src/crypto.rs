@@ -222,7 +222,7 @@ impl core::fmt::Debug for KeyMaterial {
             Self::TripleDes(_) => f.write_str("TripleDes(...)"),
             Self::Hmac(_) => f.write_str("Hmac(...)"),
             Self::Rsa(_) => f.write_str("Rsa(...)"),
-            Self::Ec(c, _, _) => f.write_fmt(format_args!("Ec({:?}, ...)", c)),
+            Self::Ec(c, _, _) => f.write_fmt(format_args!("Ec({c:?}, ...)")),
         }
     }
 }
@@ -318,7 +318,7 @@ impl AsCborValue for KeyMaterial {
                             ec::Key::X25519(ec::X25519Key(key))
                         }
                         (_, _) => {
-                            error!("Unexpected EC combination ({:?}, {:?})", curve, curve_type);
+                            error!("Unexpected EC combination ({curve:?}, {curve_type:?})");
                             return Err(CborError::NonEnumValue);
                         }
                     };

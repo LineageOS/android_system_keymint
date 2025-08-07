@@ -153,7 +153,7 @@ pub trait LegacyKeyHandler {
                 true
             }
             Err(e) => {
-                info!("legacy keyblob conversion attempt failed: {:?}", e);
+                info!("legacy keyblob conversion attempt failed: {e:?}");
                 false
             }
         }
@@ -244,7 +244,7 @@ impl Drop for SlotHolder<'_> {
     fn drop(&mut self) {
         if let Some(slot) = self.slot.take() {
             if let Err(e) = self.mgr.delete_secret(slot) {
-                error!("Failed to delete recently-acquired SDD slot {:?}: {:?}", slot, e);
+                error!("Failed to delete recently-acquired SDD slot {slot:?}: {e:?}");
             }
         }
     }

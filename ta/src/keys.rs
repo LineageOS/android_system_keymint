@@ -731,7 +731,7 @@ impl crate::KeyMintTa {
                 }
                 Ordering::Equal => Ok(false),
                 Ordering::Greater => {
-                    error!("refusing to downgrade {} from {} to {}", name, v, curr);
+                    error!("refusing to downgrade {name} from {v} to {curr}");
                     Err(km_err!(
                         InvalidArgument,
                         "keyblob with future {} {} (current {})",
@@ -760,14 +760,14 @@ impl crate::KeyMintTa {
                                 modified |= upgrade(v, hal_info.os_version, "OS version")?;
                             }
                         } else {
-                            error!("OS version not available, can't upgrade from {}", v);
+                            error!("OS version not available, can't upgrade from {v}");
                         }
                     }
                     KeyParam::OsPatchlevel(v) => {
                         if let Some(hal_info) = &self.hal_info {
                             modified |= upgrade(v, hal_info.os_patchlevel, "OS patchlevel")?;
                         } else {
-                            error!("OS patchlevel not available, can't upgrade from {}", v);
+                            error!("OS patchlevel not available, can't upgrade from {v}");
                         }
                     }
                     KeyParam::VendorPatchlevel(v) => {
@@ -775,14 +775,14 @@ impl crate::KeyMintTa {
                             modified |=
                                 upgrade(v, hal_info.vendor_patchlevel, "vendor patchlevel")?;
                         } else {
-                            error!("vendor patchlevel not available, can't upgrade from {}", v);
+                            error!("vendor patchlevel not available, can't upgrade from {v}");
                         }
                     }
                     KeyParam::BootPatchlevel(v) => {
                         if let Some(boot_info) = &self.boot_info {
                             modified |= upgrade(v, boot_info.boot_patchlevel, "boot patchlevel")?;
                         } else {
-                            error!("boot patchlevel not available, can't upgrade from {}", v);
+                            error!("boot patchlevel not available, can't upgrade from {v}");
                         }
                     }
                     _ => {}

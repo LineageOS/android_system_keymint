@@ -45,7 +45,7 @@ pub(crate) fn map_openssl_err(err: &openssl::error::Error) -> ErrorCode {
         ffi::ERR_LIB_X509V3 => translate_x509v3_error(reason),
         ffi::ERR_LIB_RSA => translate_rsa_error(reason),
         _ => {
-            error!("unknown BoringSSL error code {}", code);
+            error!("unknown BoringSSL error code {code}");
             ErrorCode::BoringSslError
         }
     }

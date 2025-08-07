@@ -97,7 +97,7 @@ fn test_check_begin_params_fail() {
 fn test_copyable_tags() {
     for tag in UNPOLICED_COPYABLE_TAGS {
         let info = info(*tag).unwrap();
-        assert!(info.user_can_specify.0, "tag {:?} not listed as user-specifiable", tag);
+        assert!(info.user_can_specify.0, "tag {tag:?} not listed as user-specifiable");
         assert!(
             info.characteristic == info::Characteristic::KeyMintEnforced
                 || info.characteristic == info::Characteristic::KeystoreEnforced
@@ -114,7 +114,7 @@ fn test_luhn_checksum() {
     let tests = vec![(0, 0), (7992739871, 3), (735423462345, 6), (721367498765427, 4)];
     for (input, want) in tests {
         let got = luhn_checksum(input);
-        assert_eq!(got, want, "mismatch for input {}", input);
+        assert_eq!(got, want, "mismatch for input {input}");
     }
 }
 
@@ -134,6 +134,6 @@ fn test_increment_imei() {
     for (input, want) in tests {
         let input_data = hex::decode(input).unwrap();
         let got = increment_imei(&input_data);
-        assert_eq!(hex::encode(got), want, "mismatch for input IMEI {}", input);
+        assert_eq!(hex::encode(got), want, "mismatch for input IMEI {input}");
     }
 }

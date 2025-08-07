@@ -472,7 +472,7 @@ fn check_rsa_params(params: &[KeyParam]) -> Result<(), Error> {
                 KeyPurpose::AttestKey => seen_attest = true,
                 KeyPurpose::Verify | KeyPurpose::Encrypt => {} // public key operations
                 KeyPurpose::AgreeKey => {
-                    warn!("Generating RSA key with invalid purpose {:?}", purpose)
+                    warn!("Generating RSA key with invalid purpose {purpose:?}")
                 }
             }
         }
@@ -659,7 +659,7 @@ fn check_ec_params(
                 KeyPurpose::AgreeKey => seen_agree = true,
                 KeyPurpose::AttestKey => seen_attest = true,
                 KeyPurpose::Verify => {}
-                _ => warn!("Generating EC key with invalid purpose {:?}", purpose),
+                _ => warn!("Generating EC key with invalid purpose {purpose:?}"),
             }
             if primary_purpose.is_none() {
                 primary_purpose = Some(*purpose);
@@ -1125,10 +1125,7 @@ fn check_begin_rsa_params(
         }
         PaddingMode::RsaPkcs115Encrypt if for_encryption(purpose) => {
             if digest.is_some() && digest != Some(Digest::None) {
-                warn!(
-                    "ignoring digest {:?} provided for PKCS#1 v1.5 encryption/decryption",
-                    digest
-                );
+                warn!("ignoring digest {digest:?} provided for PKCS#1 v1.5 encryption/decryption");
             }
         }
         PaddingMode::RsaPkcs115Sign if for_signing(purpose) => {
@@ -1426,5 +1423,5 @@ pub fn increment_imei(imei: &[u8]) -> Vec<u8> {
     let imei2 = (imei2 * 10) + luhn_checksum(imei2);
 
     // Convert back to bytes.
-    alloc::format!("{}", imei2).into_bytes()
+    alloc::format!("{imei2}").into_bytes()
 }
