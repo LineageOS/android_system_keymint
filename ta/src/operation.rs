@@ -626,7 +626,7 @@ impl crate::KeyMintTa {
                 // A successful use of a key with UsageCountLimit(1) triggers deletion.
                 warn!("Deleting single-use key after use");
                 if let Err(e) = sdd_mgr.delete_secret(slot) {
-                    error!("Failed to delete single-use key after use: {:?}", e);
+                    error!("Failed to delete single-use key after use: {e:?}");
                 }
             }
         }

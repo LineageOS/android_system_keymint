@@ -76,7 +76,7 @@ fn process(filename: &str, hex: bool) {
     let keyblob = match KeyBlob::deserialize(&hmac, &data, &hidden, BoringEq) {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("{}: Failed to parse: {:?}", filename, e);
+            eprintln!("{filename}: Failed to parse: {e:?}");
             return;
         }
     };
@@ -184,5 +184,5 @@ fn process(filename: &str, hex: bool) {
         ],
         key_material,
     };
-    println!("{}:  => {:?}", filename, plaintext_keyblob);
+    println!("{filename}:  => {plaintext_keyblob:?}");
 }

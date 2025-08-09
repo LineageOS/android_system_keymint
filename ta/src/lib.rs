@@ -472,31 +472,28 @@ impl KeyMintTa {
                             check(v, hal_info.os_version, "OS version")?;
                         }
                     } else {
-                        error!("OS version not available, can't check for upgrade from {}", v);
+                        error!("OS version not available, can't check for upgrade from {v}");
                     }
                 }
                 KeyParam::OsPatchlevel(v) => {
                     if let Some(hal_info) = &self.hal_info {
                         check(v, hal_info.os_patchlevel, "OS patchlevel")?;
                     } else {
-                        error!("OS patchlevel not available, can't check for upgrade from {}", v);
+                        error!("OS patchlevel not available, can't check for upgrade from {v}");
                     }
                 }
                 KeyParam::VendorPatchlevel(v) => {
                     if let Some(hal_info) = &self.hal_info {
                         check(v, hal_info.vendor_patchlevel, "vendor patchlevel")?;
                     } else {
-                        error!(
-                            "vendor patchlevel not available, can't check for upgrade from {}",
-                            v
-                        );
+                        error!("vendor patchlevel not available, can't check for upgrade from {v}");
                     }
                 }
                 KeyParam::BootPatchlevel(v) => {
                     if let Some(boot_info) = &self.boot_info {
                         check(v, boot_info.boot_patchlevel, "boot patchlevel")?;
                     } else {
-                        error!("boot patchlevel not available, can't check for upgrade from {}", v);
+                        error!("boot patchlevel not available, can't check for upgrade from {v}");
                     }
                 }
                 _ => {}
@@ -558,7 +555,7 @@ impl KeyMintTa {
     /// implementation-specific manner).
     pub fn set_boot_info(&mut self, boot_info: keymint::BootInfo) -> Result<(), Error> {
         if !self.in_early_boot {
-            error!("Rejecting attempt to set boot info {:?} after early boot", boot_info);
+            error!("Rejecting attempt to set boot info {boot_info:?} after early boot");
             return Err(km_err!(
                 EarlyBootEnded,
                 "attempt to set boot info to {boot_info:?} after early boot"
@@ -567,8 +564,7 @@ impl KeyMintTa {
         if let Some(existing_boot_info) = &self.boot_info {
             if *existing_boot_info == boot_info {
                 warn!(
-                    "Boot info already set, ignoring second attempt to set same values {:?}",
-                    boot_info
+                    "Boot info already set, ignoring second attempt to set same values {boot_info:?}"
                 );
             } else {
                 return Err(km_err!(
@@ -579,7 +575,7 @@ impl KeyMintTa {
                 ));
             }
         } else {
-            info!("Setting boot_info to {:?}", boot_info);
+            info!("Setting boot_info to {boot_info:?}");
             let rot_info = RootOfTrustInfo {
                 verified_boot_key: boot_info.verified_boot_key.clone(),
                 device_boot_locked: boot_info.device_boot_locked,
@@ -604,7 +600,7 @@ impl KeyMintTa {
     /// operating system.
     pub fn set_hal_info(&mut self, hal_info: HalInfo) {
         if self.hal_info.is_none() {
-            info!("Setting hal_info to {:?}", hal_info);
+            info!("Setting hal_info to {hal_info:?}");
             self.hal_info = Some(hal_info);
         } else {
             warn!(
@@ -659,7 +655,7 @@ impl KeyMintTa {
                 // may provide them.
                 match get_ids_impl.get() {
                     Ok(ids) => *self.attestation_id_info.borrow_mut() = Some(Rc::new(ids)),
-                    Err(e) => error!("Failed to retrieve attestation IDs: {:?}", e),
+                    Err(e) => error!("Failed to retrieve attestation IDs: {e:?}"),
                 }
             }
         }
@@ -684,7 +680,7 @@ impl KeyMintTa {
             // may provide them.
             match self.dev.rpc.get_dice_info(rpc::TestMode(false)) {
                 Ok(dice_info) => *self.dice_info.borrow_mut() = Some(Rc::new(dice_info)),
-                Err(e) => error!("Failed to retrieve DICE info: {:?}", e),
+                Err(e) => error!("Failed to retrieve DICE info: {e:?}"),
             }
         }
         self.dice_info.borrow().as_ref().cloned()
@@ -698,7 +694,7 @@ impl KeyMintTa {
                 (Some(req.code()), self.process_req(req))
             }
             Err(e) => {
-                error!("failed to decode CBOR request: {:?}", e);
+                error!("failed to decode CBOR request: {e:?}");
                 // We need to report the error to the HAL, but we don't know whether the request was
                 // for the `IRemotelyProvisionedComponent` or for one of the other HALs, so we don't
                 // know what numbering space the error codes are expected to be in.  Assume the
@@ -710,7 +706,7 @@ impl KeyMintTa {
         match rsp.into_vec() {
             Ok(rsp_data) => rsp_data,
             Err(e) => {
-                error!("failed to encode CBOR response: {:?}", e);
+                error!("failed to encode CBOR response: {e:?}");
                 invalid_cbor_rsp_data().to_vec()
             }
         }
@@ -1031,14 +1027,14 @@ impl KeyMintTa {
                 (&mut self.dev.sdd_mgr, encrypted_keyblob.secure_deletion_slot)
             {
                 if let Err(e) = sdd_mgr.delete_secret(slot) {
-                    error!("failed to delete secure deletion slot: {:?}", e);
+                    error!("failed to delete secure deletion slot: {e:?}");
                 }
             }
         } else {
             // We might have failed to parse the keyblob because it is in some prior format.
             if let Some(old_key) = self.dev.legacy_key.as_mut() {
                 if let Err(e) = old_key.delete_legacy_key(keyblob) {
-                    error!("failed to parse keyblob as legacy : {:?}, ignoring", e);
+                    error!("failed to parse keyblob as legacy : {e:?}, ignoring");
                 }
             } else {
                 error!("failed to parse keyblob, ignoring");
@@ -1120,10 +1116,10 @@ impl KeyMintTa {
         let boot_info = keymint::BootInfo::from_tagged_slice(&payload)
             .map_err(|_e| km_err!(InvalidArgument, "Failed to CBOR-decode RootOfTrust"))?;
         if self.boot_info.is_none() {
-            info!("Setting boot_info to TEE-provided {:?}", boot_info);
+            info!("Setting boot_info to TEE-provided {boot_info:?}");
             self.boot_info = Some(boot_info);
         } else {
-            info!("Ignoring TEE-provided RootOfTrust {:?} as already set", boot_info);
+            info!("Ignoring TEE-provided RootOfTrust {boot_info:?} as already set");
         }
         Ok(())
     }
@@ -1278,14 +1274,14 @@ fn error_rsp(error_code: i32) -> PerformOpResponse {
 
 /// Create a response structure with the given error.
 fn op_error_rsp(op: KeyMintOperation, err: Error) -> PerformOpResponse {
-    warn!("failing {:?} request with error {:?}", op, err);
+    warn!("failing {op:?} request with error {err:?}");
     if kmr_wire::is_rpc_operation(op) {
         // The IRemotelyProvisionedComponent HAL uses a different error space than the
         // other HALs.
         let rpc_err: rpc::ErrorCode = match err {
             Error::Cbor(_) | Error::Der(_) | Error::Alloc(_) => rpc::ErrorCode::Failed,
             Error::Hal(_, _) => {
-                error!("encountered non-RKP error on RKP method! {:?}", err);
+                error!("encountered non-RKP error on RKP method! {err:?}");
                 rpc::ErrorCode::Failed
             }
             Error::Rpc(e, _) => e,
@@ -1296,7 +1292,7 @@ fn op_error_rsp(op: KeyMintOperation, err: Error) -> PerformOpResponse {
             Error::Cbor(_) | Error::Der(_) => ErrorCode::InvalidArgument,
             Error::Hal(e, _) => e,
             Error::Rpc(_, _) => {
-                error!("encountered RKP error on non-RKP method! {:?}", err);
+                error!("encountered RKP error on non-RKP method! {err:?}");
                 ErrorCode::InvalidArgument
             }
             Error::Alloc(_) => ErrorCode::MemoryAllocationFailed,

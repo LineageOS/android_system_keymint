@@ -88,7 +88,7 @@ impl Key {
         let rsa_pvt_key = match RsaPrivateKey::from_der(self.0.as_slice()) {
             Ok(k) => k,
             Err(e) => {
-                log::error!("failed to determine RSA key length: {:?}", e);
+                log::error!("failed to determine RSA key length: {e:?}");
                 return 0;
             }
         };

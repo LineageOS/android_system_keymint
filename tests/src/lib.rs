@@ -154,7 +154,7 @@ pub fn test_hkdf<H: Hmac>(hmac: H) {
         let info = hex::decode(test.info).unwrap();
 
         let got = hmac.hkdf(&salt, &ikm, &info, test.out_len).unwrap();
-        assert_eq!(hex::encode(got), test.want, "incorrect HKDF result for case {}", i);
+        assert_eq!(hex::encode(got), test.want, "incorrect HKDF result for case {i}");
     }
 }
 
@@ -335,8 +335,7 @@ pub fn test_hmac<H: Hmac>(hmac: H) {
         assert_eq!(
             hex::encode(&mac),
             test.expected_mac[..(test.tag_size * 2)],
-            "incorrect mac in test case {}",
-            i
+            "incorrect mac in test case {i}"
         );
     }
 }
@@ -578,7 +577,7 @@ pub fn test_signing_cert_parse<T: kmr_ta::device::RetrieveCertSigningInfo>(
             let info = SigningKeyType { which, algo_hint };
             let chain = certs
                 .cert_chain(info)
-                .unwrap_or_else(|_| panic!("failed to retrieve chain for {:?}", info));
+                .unwrap_or_else(|_| panic!("failed to retrieve chain for {info:?}"));
 
             // Check that the attestation chain looks basically valid (parses as DER,
             // has subject/issuer match).
@@ -594,17 +593,14 @@ pub fn test_signing_cert_parse<T: kmr_ta::device::RetrieveCertSigningInfo>(
                     assert_eq!(
                         hex::encode(&subject_data),
                         hex::encode(&issuer_data),
-                        "root cert has subject != issuer for {:?}",
-                        info
+                        "root cert has subject != issuer for {info:?}"
                     );
                 } else {
                     // Issuer of cert should be the subject of the previous cert.
                     assert_eq!(
                         hex::encode(&prev_subject_data),
                         hex::encode(&issuer_data),
-                        "cert {} has issuer != prev_cert.subject for {:?}",
-                        idx,
-                        info
+                        "cert {idx} has issuer != prev_cert.subject for {info:?}"
                     )
                 }
                 prev_subject_data.clone_from(&subject_data);
