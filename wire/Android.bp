@@ -24,85 +24,6 @@ rust_library {
     vendor_available: true,
     edition: "2021",
     lints: "android",
-    // Default target includes support for all versions of the KeyMint HAL.
-    features: [
-        "hal_v2",
-        "hal_v3",
-        "hal_v4",
-    ],
-    rustlibs: [
-        "libciborium",
-        "libciborium_io",
-        "libcoset",
-        "liblog_rust",
-        "libzeroize",
-    ],
-    proc_macros: [
-        "libenumn",
-        "libkmr_derive",
-    ],
-}
-
-// Variant of the library that only includes support for the KeyMint v3 HAL types.
-rust_library {
-    name: "libkmr_wire_hal_v3",
-    crate_name: "kmr_wire",
-    srcs: ["src/lib.rs"],
-    host_supported: true,
-    vendor_available: true,
-    edition: "2021",
-    lints: "android",
-    features: [
-        "hal_v3",
-        "hal_v2",
-    ],
-    rustlibs: [
-        "libciborium",
-        "libciborium_io",
-        "libcoset",
-        "liblog_rust",
-        "libzeroize",
-    ],
-    proc_macros: [
-        "libenumn",
-        "libkmr_derive",
-    ],
-}
-
-// Variant of the library that only includes support for the KeyMint v2 HAL types.
-rust_library {
-    name: "libkmr_wire_hal_v2",
-    crate_name: "kmr_wire",
-    srcs: ["src/lib.rs"],
-    host_supported: true,
-    vendor_available: true,
-    edition: "2021",
-    lints: "android",
-    features: [
-        "hal_v2",
-    ],
-    rustlibs: [
-        "libciborium",
-        "libciborium_io",
-        "libcoset",
-        "liblog_rust",
-        "libzeroize",
-    ],
-    proc_macros: [
-        "libenumn",
-        "libkmr_derive",
-    ],
-}
-
-// Variant of the library that only includes support for the KeyMint v1 HAL types.
-rust_library {
-    name: "libkmr_wire_hal_v1",
-    crate_name: "kmr_wire",
-    srcs: ["src/lib.rs"],
-    host_supported: true,
-    vendor_available: true,
-    edition: "2021",
-    lints: "android",
     rustlibs: [
         "libciborium",
         "libciborium_io",
@@ -123,11 +44,6 @@ rust_library_rlib {
     vendor_available: true,
     edition: "2021",
     lints: "android",
-    features: [
-        "hal_v2",
-        "hal_v3",
-        "hal_v4",
-    ],
     rustlibs: [
         "libciborium_nostd",
         "libciborium_io_nostd",
