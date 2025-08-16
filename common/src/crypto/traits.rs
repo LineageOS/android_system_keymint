@@ -528,10 +528,7 @@ macro_rules! log_unimpl {
 macro_rules! unimpl {
     () => {
         log_unimpl!();
-        return Err(Error::Hal(
-            kmr_wire::keymint::ErrorCode::Unimplemented,
-            alloc::format!("{}:{}: method unimplemented", file!(), line!()),
-        ));
+        return Err($crate::km_err!(Unimplemented, "method unimplemented"));
     };
 }
 

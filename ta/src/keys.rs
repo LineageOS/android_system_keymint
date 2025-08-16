@@ -22,7 +22,7 @@ use der::{referenced::RefToOwned, Decode, Encode, Sequence};
 use kmr_common::{
     crypto::{self, aes, rsa, KeyMaterial, OpaqueOr},
     der_err, get_bool_tag_value, get_opt_tag_value, get_tag_value, keyblob, km_err, tag,
-    try_to_vec, vec_try_with_capacity, Error, FallibleAllocExt,
+    try_to_vec, vec_try_with_capacity, Error, ErrorKind, FallibleAllocExt,
 };
 use kmr_wire::{
     keymint::{
@@ -699,28 +699,29 @@ impl crate::KeyMintTa {
         let (mut keyblob, mut modified) =
             match self.keyblob_parse_decrypt_backlevel(keyblob_to_upgrade, &upgrade_params) {
                 Ok(v) => (v.0, false),
-                Err(Error::Hal(ErrorCode::KeyRequiresUpgrade, _)) => {
-                    // Because `keyblob_parse_decrypt_backlevel` explicitly allows back-level
-                    // versioned keys, a `KeyRequiresUpgrade` error indicates that the keyblob looks
-                    // to be in legacy format.  Try to convert it.
-                    let legacy_handler =
-                        self.dev.legacy_key.as_mut().ok_or_else(|| {
+                Err(e) => match e.kind() {
+                    ErrorKind::Hal(ErrorCode::KeyRequiresUpgrade, _) => {
+                        // Because `keyblob_parse_decrypt_backlevel` explicitly allows back-level
+                        // versioned keys, a `KeyRequiresUpgrade` error indicates that the keyblob
+                        // looks to be in legacy format.  Try to convert it.
+                        let legacy_handler = self.dev.legacy_key.as_mut().ok_or_else(|| {
                             km_err!(KeymintNotConfigured, "no legacy key handler")
                         })?;
-                    (
-                        legacy_handler.convert_legacy_key(
-                            keyblob_to_upgrade,
-                            &upgrade_params,
-                            self.boot_info
-                                .as_ref()
-                                .ok_or_else(|| km_err!(HardwareNotYetAvailable, "no boot info"))?,
-                            self.hw_info.security_level,
-                        )?,
-                        // Force the emission of a new keyblob even if versions are the same.
-                        true,
-                    )
-                }
-                Err(e) => return Err(e),
+                        (
+                            legacy_handler.convert_legacy_key(
+                                keyblob_to_upgrade,
+                                &upgrade_params,
+                                self.boot_info.as_ref().ok_or_else(|| {
+                                    km_err!(HardwareNotYetAvailable, "no boot info")
+                                })?,
+                                self.hw_info.security_level,
+                            )?,
+                            // Force the emission of a new keyblob even if versions are the same.
+                            true,
+                        )
+                    }
+                    _ => return Err(e),
+                },
             };
 
         fn upgrade(v: &mut u32, curr: u32, name: &str) -> Result<bool, Error> {
