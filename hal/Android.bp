@@ -28,6 +28,7 @@ rust_defaults {
         "libciborium",
         "libciborium_io",
         "libhex",
+        "libkmr_wire",
         "liblog_rust",
         "libregex",
         "librustutils",
@@ -53,9 +54,6 @@ rust_library {
         "keymint_use_latest_hal_aidl_rust",
         "kmr_hal_defaults",
     ],
-    rustlibs: [
-        "libkmr_wire",
-    ],
 }
 
 rust_library {
@@ -72,7 +70,6 @@ rust_library {
     ],
     rustlibs: [
         "android.hardware.security.keymint-V3-rust",
-        "libkmr_wire_hal_v3",
     ],
 }
 
@@ -89,7 +86,6 @@ rust_library {
     ],
     rustlibs: [
         "android.hardware.security.keymint-V2-rust",
-        "libkmr_wire_hal_v2",
     ],
 }
 
@@ -103,7 +99,6 @@ rust_library {
     ],
     rustlibs: [
         "android.hardware.security.keymint-V1-rust",
-        "libkmr_wire_hal_v1",
     ],
 }
 
