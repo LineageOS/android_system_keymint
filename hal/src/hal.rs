@@ -385,6 +385,11 @@ impl Fromm<wire::keymint::KeyParam> for keymint::KeyParameter::KeyParameter {
             KeyParam::AttestationIdSecondImei(v) => {
                 (Tag::ATTESTATION_ID_SECOND_IMEI, KeyParameterValue::Blob(v))
             }
+            #[cfg(not(feature = "hal_v3"))]
+            KeyParam::AttestationIdSecondImei(v) => {
+                error!("TA emitted ATTESTATION_ID_SECOND_IMEI tag but HAL v3 is not supported");
+                (Tag::INVALID, KeyParameterValue::Blob(v))
+            }
             KeyParam::AttestationIdMeid(v) => {
                 (Tag::ATTESTATION_ID_MEID, KeyParameterValue::Blob(v))
             }
@@ -402,6 +407,11 @@ impl Fromm<wire::keymint::KeyParam> for keymint::KeyParameter::KeyParameter {
             }
             #[cfg(feature = "hal_v4")]
             KeyParam::ModuleHash(v) => (Tag::MODULE_HASH, KeyParameterValue::Blob(v)),
+            #[cfg(not(feature = "hal_v4"))]
+            KeyParam::ModuleHash(v) => {
+                error!("TA emitted MODULE_HASH tag but HAL v4 is not supported");
+                (Tag::INVALID, KeyParameterValue::Blob(v))
+            }
         };
         Self { tag, value }
     }
