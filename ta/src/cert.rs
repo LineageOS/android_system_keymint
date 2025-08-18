@@ -19,7 +19,7 @@ use alloc::{borrow::Cow, vec::Vec};
 use core::time::Duration;
 use der::asn1::{BitString, OctetString, OctetStringRef, SetOfVec};
 use der::{
-    asn1::{GeneralizedTime, Null, UtcTime},
+    asn1::{Any, GeneralizedTime, Null, UtcTime},
     oid::AssociatedOid,
     Enumerated, Sequence,
 };
@@ -81,12 +81,14 @@ pub(crate) fn tbs_certificate<'a>(
     let not_before = get_tag_value!(params, CertificateNotBefore, ErrorCode::MissingNotBefore)?;
     let not_after = get_tag_value!(params, CertificateNotAfter, ErrorCode::MissingNotAfter)?;
 
-    // Determine the OID part of the `AlgorithmIdentifier`; we do not support any signing key
-    // types that have parameters in the `AlgorithmIdentifier`
-    let sig_alg_oid = match info {
+    // Determine the contents of the `AlgorithmIdentifier`, as an OID and parameters:
+    // - RSA: RFC 4055 section 5 requires `NULL` parameters.
+    // - ECDSA: RFC 5758 section 3.2 requires parameters be omitted.
+    // - EdDSA: RFC 8410 section 3 requires parameters be omitted.
+    let (sig_alg_oid, parameters) = match info {
         Some(info) => match info.signing_key {
-            KeyMaterial::Rsa(_) => crypto::rsa::SHA256_PKCS1_SIGNATURE_OID,
-            KeyMaterial::Ec(curve, _, _) => crypto::ec::curve_to_signing_oid(curve),
+            KeyMaterial::Rsa(_) => (crypto::rsa::SHA256_PKCS1_SIGNATURE_OID, Some(Any::null())),
+            KeyMaterial::Ec(curve, _, _) => (crypto::ec::curve_to_signing_oid(curve), None),
             _ => {
                 return Err(km_err!(UnsupportedAlgorithm, "unexpected cert signing key type"));
             }
@@ -94,9 +96,11 @@ pub(crate) fn tbs_certificate<'a>(
         None => {
             // No signing key, so signature will be empty, but we still need a value here.
             match tag::get_algorithm(params)? {
-                keymint::Algorithm::Rsa => crypto::rsa::SHA256_PKCS1_SIGNATURE_OID,
+                keymint::Algorithm::Rsa => {
+                    (crypto::rsa::SHA256_PKCS1_SIGNATURE_OID, Some(Any::null()))
+                }
                 keymint::Algorithm::Ec => {
-                    crypto::ec::curve_to_signing_oid(tag::get_ec_curve(chars)?)
+                    (crypto::ec::curve_to_signing_oid(tag::get_ec_curve(chars)?), None)
                 }
                 alg => {
                     return Err(km_err!(
@@ -148,7 +152,7 @@ pub(crate) fn tbs_certificate<'a>(
         version: Version::V3,
         serial_number: SerialNumber::new(cert_serial)
             .map_err(|e| der_err!(e, "failed to build serial number for {:?}", cert_serial))?,
-        signature: AlgorithmIdentifier { oid: sig_alg_oid, parameters: None },
+        signature: AlgorithmIdentifier { oid: sig_alg_oid, parameters },
         issuer: RdnSequence::from_der(cert_issuer)
             .map_err(|e| der_err!(e, "failed to build issuer"))?,
         validity: x509_cert::time::Validity {
