@@ -488,6 +488,27 @@ macro_rules! check_attestation_id {
     }
 }
 
+/// Macro to check that a specified attestation ID matches one of two provisioned values.
+macro_rules! check_attestation_id_either {
+    {
+        $params:expr, $variant:ident, $mustmatch:expr
+    } => {
+        {
+            if let Some(val) = get_opt_tag_value!($params, $variant)? {
+                match $mustmatch {
+                    None => return Err(km_err!(CannotAttestIds,
+                                               "no attestation IDs provisioned")),
+                    Some((want1, want2)) => if val != want1 && val != want2 {
+                        return Err(km_err!(CannotAttestIds,
+                                           "attestation ID mismatch for {}",
+                                           stringify!($variant)))
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl<'a> AuthorizationList<'a> {
     /// Build an `AuthorizationList` ready for serialization. This constructor will fail if device
     /// ID attestation is required but the relevant IDs are missing or mismatched.
@@ -515,11 +536,15 @@ impl<'a> AuthorizationList<'a> {
             AttestationIdSerial,
             attestation_ids.map(|v| &v.serial)
         );
-        check_attestation_id!(keygen_params, AttestationIdImei, attestation_ids.map(|v| &v.imei));
-        check_attestation_id!(
+        check_attestation_id_either!(
+            keygen_params,
+            AttestationIdImei,
+            attestation_ids.map(|v| (&v.imei, &v.imei2))
+        );
+        check_attestation_id_either!(
             keygen_params,
             AttestationIdSecondImei,
-            attestation_ids.map(|v| &v.imei2)
+            attestation_ids.map(|v| (&v.imei, &v.imei2))
         );
         check_attestation_id!(keygen_params, AttestationIdMeid, attestation_ids.map(|v| &v.meid));
         check_attestation_id!(
