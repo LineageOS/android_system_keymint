@@ -29,7 +29,7 @@ use kmr_common::{
     crypto::{self, hmac, OpaqueOr},
     get_bool_tag_value,
     keyblob::{self, RootOfTrustInfo, SecureDeletionSlot},
-    km_err, tag, try_to_vec, vec_try, vec_try_with_capacity, Error, FallibleAllocExt,
+    km_err, tag, try_to_vec, vec_try, vec_try_with_capacity, Error, ErrorKind, FallibleAllocExt,
 };
 use kmr_wire::{
     coset::TaggedCborSerializable,
@@ -724,7 +724,9 @@ impl KeyMintTa {
                 let verified_boot_state = match VerifiedBootState::try_from(req.verified_boot_state)
                 {
                     Ok(state) => state,
-                    Err(e) => return op_error_rsp(SetBootInfoRequest::CODE, Error::Cbor(e)),
+                    Err(e) => {
+                        return op_error_rsp(SetBootInfoRequest::CODE, ErrorKind::Cbor(e).into())
+                    }
                 };
                 match self.set_boot_info(keymint::BootInfo {
                     verified_boot_key: req.verified_boot_key,
@@ -1278,24 +1280,24 @@ fn op_error_rsp(op: KeyMintOperation, err: Error) -> PerformOpResponse {
     if kmr_wire::is_rpc_operation(op) {
         // The IRemotelyProvisionedComponent HAL uses a different error space than the
         // other HALs.
-        let rpc_err: rpc::ErrorCode = match err {
-            Error::Cbor(_) | Error::Der(_) | Error::Alloc(_) => rpc::ErrorCode::Failed,
-            Error::Hal(_, _) => {
+        let rpc_err: rpc::ErrorCode = match err.kind() {
+            ErrorKind::Cbor(_) | ErrorKind::Der(_) | ErrorKind::Alloc(_) => rpc::ErrorCode::Failed,
+            ErrorKind::Hal(_, _) => {
                 error!("encountered non-RKP error on RKP method! {err:?}");
                 rpc::ErrorCode::Failed
             }
-            Error::Rpc(e, _) => e,
+            ErrorKind::Rpc(e, _) => *e,
         };
         error_rsp(rpc_err as i32)
     } else {
-        let hal_err = match err {
-            Error::Cbor(_) | Error::Der(_) => ErrorCode::InvalidArgument,
-            Error::Hal(e, _) => e,
-            Error::Rpc(_, _) => {
+        let hal_err = match err.kind() {
+            ErrorKind::Cbor(_) | ErrorKind::Der(_) => ErrorCode::InvalidArgument,
+            ErrorKind::Hal(e, _) => *e,
+            ErrorKind::Rpc(_, _) => {
                 error!("encountered RKP error on non-RKP method! {err:?}");
                 ErrorCode::InvalidArgument
             }
-            Error::Alloc(_) => ErrorCode::MemoryAllocationFailed,
+            ErrorKind::Alloc(_) => ErrorCode::MemoryAllocationFailed,
         };
         error_rsp(hal_err as i32)
     }
