@@ -23,7 +23,7 @@ use alloc::{
 };
 use core::convert::From;
 use core::num::TryFromIntError;
-use der::ErrorKind;
+use der::ErrorKind as DerErrorKind;
 use kmr_wire::{cbor, keymint::ErrorCode, rpc, CborError};
 
 pub use kmr_wire as wire;
@@ -32,13 +32,25 @@ pub mod crypto;
 pub mod keyblob;
 pub mod tag;
 
-/// General error type.
+/// Location in a source file where an error originated.
+///
+/// Don't construct this type directly but instead use [`km_err_new!`] to get an [`Error`] with the
+/// correct location.
+#[derive(Copy, Clone, Debug)]
+pub struct ErrorLocation {
+    /// Name of the source file.
+    pub file: &'static str,
+    /// Line within the source file.
+    pub line: u32,
+}
+
+/// A list specifying the categories of error.
 #[derive(Debug)]
-pub enum Error {
+pub enum ErrorKind {
     /// Error from CBOR conversion.
     Cbor(CborError),
     /// Error from ASN.1 DER conversion.
-    Der(ErrorKind),
+    Der(DerErrorKind),
     /// Error as reported on the HAL interface.
     ///
     /// The `IKeyMintDevice`, `ISharedSecret` and `ISecureClock` HALs all share the same numbering
@@ -54,57 +66,93 @@ pub enum Error {
     Alloc(&'static str),
 }
 
+/// The error type for a KeyMint operation with an [`ErrorKind`] and diagnostic information.
+#[derive(Debug)]
+pub struct Error {
+    location: Option<ErrorLocation>,
+    kind: ErrorKind,
+}
+
+impl Error {
+    /// Creates a new error at a given source location.
+    pub fn new_at(location: ErrorLocation, kind: ErrorKind) -> Error {
+        Error { location: Some(location), kind }
+    }
+
+    /// Gets the source location of the error.
+    pub fn location(&self) -> Option<ErrorLocation> {
+        self.location
+    }
+
+    /// Gets the kind of error.
+    pub fn kind(&self) -> &ErrorKind {
+        &self.kind
+    }
+}
+
 // The following macros for error generation allow the message portion to be automatically
 // compiled out in future, avoiding potential information leakage and allocation.
 
-/// Macro to build an [`Error::Hal`] instance for a specific [`ErrorCode`] value known at compile
+/// Macro to build an [`Error`] instance with location information.
+#[macro_export]
+macro_rules! km_err_new {
+    { $kind:expr} => {
+        $crate::Error::new_at($crate::ErrorLocation { file: file!(), line: line!() }, $kind)
+    }
+}
+
+/// Macro to build an [`ErrorKind::Hal`] error for a specific [`ErrorCode`] value known at compile
 /// time: `km_err!(InvalidTag, "some {} format", arg)`.
 #[macro_export]
 macro_rules! km_err {
     { $error_code:ident, $($arg:tt)+ } => {
-        $crate::Error::Hal(kmr_wire::keymint::ErrorCode::$error_code,
-                           alloc::format!("{}:{}: {}", file!(), line!(), format_args!($($arg)+))) };
+        $crate::km_err_new!($crate::ErrorKind::Hal(
+            kmr_wire::keymint::ErrorCode::$error_code,
+            alloc::format!($($arg)+),
+        ))
+    }
 }
 
-/// Macro to build an [`Error::Hal`] instance:
+/// Macro to build an [`ErrorKind::Hal`] error:
 /// `km_verr!(rc, "some {} format", arg)`.
 #[macro_export]
 macro_rules! km_verr {
     { $error_code:expr, $($arg:tt)+ } => {
-        $crate::Error::Hal($error_code,
-                           alloc::format!("{}:{}: {}", file!(), line!(), format_args!($($arg)+))) };
+       $crate::km_err_new!($crate::ErrorKind::Hal($error_code, alloc::format!($($arg)+)))
+    }
 }
 
-/// Macro to build an [`Error::Alloc`] instance. Note that this builds a `&'static str` at compile
+/// Macro to build an [`ErrorKind::Alloc`] error. Note that this builds a `&'static str` at compile
 /// time, so there is no allocation needed for the message (which would be failure-prone when
 /// dealing with an allocation failure).
 #[macro_export]
 macro_rules! alloc_err {
     { $len:expr } => {
-        $crate::Error::Alloc(
-            concat!(file!(), ":", line!(), ": failed allocation of size ", stringify!($len))
-        )
+        $crate::km_err_new!($crate::ErrorKind::Alloc(stringify!($len)))
     }
 }
 
-/// Macro to build an [`Error::Der`] instance from a [`der::Error`].
+/// Macro to build an [`ErrorKind::Der`] error from a [`der::Error`].
 #[macro_export]
 macro_rules! der_err {
     { $err:expr, $($arg:tt)+ } => {
         {
             log::warn!("{}: {:?} at {:?}", format_args!($($arg)+), $err, $err.position());
-            $crate::Error::Der($err.kind())
+            $crate::Error::from($crate::ErrorKind::Der($err.kind()))
         }
     }
 }
 
-/// Macro to build an [`Error::Rpc`] instance for a specific [`rpc::ErrorCode`] value known at
+/// Macro to build an [`ErrorKind::Rpc`] error for a specific [`rpc::ErrorCode`] value known at
 /// compile time: `rpc_err!(Removed, "some {} format", arg)`.
 #[macro_export]
 macro_rules! rpc_err {
     { $error_code:ident, $($arg:tt)+ } => {
-        $crate::Error::Rpc(kmr_wire::rpc::ErrorCode::$error_code,
-                           alloc::format!("{}:{}: {}", file!(), line!(), format_args!($($arg)+))) };
+        $crate::km_err_new!($crate::ErrorKind::Rpc(
+            kmr_wire::rpc::ErrorCode::$error_code,
+            alloc::format!($($arg)+),
+        ))
+    }
 }
 
 /// Macro to allocate a `Vec<T>` with the given length reserved, detecting allocation failure.
@@ -181,30 +229,41 @@ impl<T> FallibleAllocExt<T> for Vec<T> {
     }
 }
 
+impl From<ErrorKind> for Error {
+    fn from(kind: ErrorKind) -> Self {
+        Error { location: None, kind }
+    }
+}
+
 impl From<alloc::collections::TryReserveError> for Error {
     fn from(_e: alloc::collections::TryReserveError) -> Self {
-        Error::Hal(
+        ErrorKind::Hal(
             kmr_wire::keymint::ErrorCode::MemoryAllocationFailed,
             "allocation of Vec failed".to_string(),
         )
+        .into()
     }
 }
 
 impl From<TryFromIntError> for Error {
     fn from(e: TryFromIntError) -> Self {
-        km_err!(InvalidArgument, "failed to convert integer: {e}")
+        ErrorKind::Hal(
+            kmr_wire::keymint::ErrorCode::InvalidArgument,
+            alloc::format!("failed to convert integer: {e}"),
+        )
+        .into()
     }
 }
 
 impl From<CborError> for Error {
     fn from(e: CborError) -> Self {
-        Error::Cbor(e)
+        ErrorKind::Cbor(e).into()
     }
 }
 
 impl From<cbor::value::Error> for Error {
     fn from(e: cbor::value::Error) -> Self {
-        Self::Cbor(e.into())
+        ErrorKind::Cbor(e.into()).into()
     }
 }
 

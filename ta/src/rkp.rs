@@ -26,7 +26,7 @@ use kmr_common::crypto::{
     ec::{CoseKeyPurpose, RKP_TEST_KEY_CBOR_MARKER},
     hmac_sha256, KeyMaterial,
 };
-use kmr_common::{keyblob, km_err, rpc_err, try_to_vec, Error, FallibleAllocExt};
+use kmr_common::{keyblob, km_err, rpc_err, try_to_vec, Error, ErrorKind, FallibleAllocExt};
 use kmr_wire::{
     cbor,
     keymint::{
@@ -331,6 +331,6 @@ where
 pub fn serialize_cbor(cbor_value: &Value) -> Result<Vec<u8>, Error> {
     let mut buf = Vec::new();
     cbor::ser::into_writer(cbor_value, &mut buf)
-        .map_err(|_e| Error::Cbor(CborError::EncodeFailed))?;
+        .map_err(|_e| Error::from(ErrorKind::Cbor(CborError::EncodeFailed)))?;
     Ok(buf)
 }

@@ -23,11 +23,12 @@ use der::{
     oid::AssociatedOid,
     Enumerated, Sequence,
 };
-use der::{Decode, Encode, EncodeValue, ErrorKind, Length};
+use der::{Decode, Encode, EncodeValue, ErrorKind as DerErrorKind, Length};
 use flagset::FlagSet;
 use kmr_common::crypto::KeyMaterial;
 use kmr_common::{
     crypto, der_err, get_tag_value, km_err, tag, try_to_vec, vec_try_with_capacity, Error,
+    ErrorKind,
 };
 use kmr_common::{get_bool_tag_value, get_opt_tag_value, FallibleAllocExt};
 use kmr_wire::{
@@ -184,7 +185,7 @@ pub(crate) fn extract_subject(cert: &keymint::Certificate) -> Result<Vec<u8>, Er
 /// RFC 5280 section 4.1.2.5 requires that UtcTime is used up to 2049
 /// and GeneralizedTime from 2050 onwards
 fn validity_time_from_datetime(when: DateTime) -> Result<Time, Error> {
-    let dt_err = |_| Error::Der(ErrorKind::DateTime);
+    let dt_err = |_| Error::from(ErrorKind::Der(DerErrorKind::DateTime));
     let secs_since_epoch: i64 = when.ms_since_epoch / 1000;
 
     if when.ms_since_epoch >= 0 {
