@@ -299,6 +299,9 @@ fn consume_blob(
 /// modified to contain the unconsumed part of the data.
 pub fn deserialize(data: &mut &[u8]) -> Result<Vec<KeyParam>, Error> {
     let blob_data_size = consume_u32(data)? as usize;
+    if blob_data_size > data.len() {
+        return Err(km_err!(InvalidKeyBlob, "failed to find {blob_data_size} bytes"));
+    }
 
     let blob_data = &data[..blob_data_size];
     let mut next_blob_offset = 0;
