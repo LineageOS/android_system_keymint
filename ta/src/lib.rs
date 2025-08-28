@@ -63,6 +63,8 @@ mod tests;
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyMintHalVersion {
+    /// V5 removes support for destroying attestation IDs.
+    V5 = 500,
     /// V4 adds support for attestation of module information.
     V4 = 400,
     /// V3 adds support for attestation of second IMEI value.
@@ -617,6 +619,7 @@ impl KeyMintTa {
             200 => KeyMintHalVersion::V2,
             300 => KeyMintHalVersion::V3,
             400 => KeyMintHalVersion::V4,
+            500 => KeyMintHalVersion::V5,
             _ => return Err(km_err!(InvalidArgument, "unsupported HAL version {}", aidl_version)),
         };
         if aidl_version == self.aidl_version {
